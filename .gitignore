@@ -1,0 +1,68 @@
+# ── Arquivos Python compilados ────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ── Build / distribuição ──────────────────────────────────────
+build/
+dist/
+downloads/
+.eggs/
+*.egg-info/
+*.egg
+wheels/
+MANIFEST
+
+# ── Logs de instalação ────────────────────────────────────────
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ── Testes / coverage / caches ────────────────────────────────
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py.cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# ── Jupyter Notebook ─────────────────────────────────────────
+.ipynb_checkpoints
+
+# ── Ambientes virtuais ───────────────────────────────────────
+.env
+.envrc
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ── Ferramentas de análise estática / tipos ──────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ── Ferramentas de IDE ───────────────────────────────────────
+.spyderproject
+.spyproject
+.ropeproject
+
+# ── Documentação gerada ──────────────────────────────────────
+docs/_build/
+site/
+site/
+
+# ── Coisas específicas do teu projeto ────────────────────────
+/pdf
+desktop.ini
