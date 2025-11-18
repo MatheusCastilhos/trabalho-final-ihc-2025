@@ -1,0 +1,48 @@
+/* Balão de fala */
+.speech-bubble {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 40px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.speech-bubble p {
+  margin: 0;
+  font-size: 1.1em;
+}
+
+/* Centro */
+.center {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.mic-button-large {
+  background: #1E88E5;
+  border: none;
+  border-radius: 50%;
+  width: 120px;
+  height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.mic-button-large i {
+  color: white;
+  font-size: 2em;
+}
+
+/* Texto auxiliar */
+.helper-text {
+  text-align: center;
+  color: #666;
+}
+
+.helper-text p {
+  margin: 0;
+}
