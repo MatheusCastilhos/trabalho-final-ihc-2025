@@ -66,3 +66,4 @@ site/
 # ── Coisas específicas do teu projeto ────────────────────────
 /pdf
 desktop.ini
+db.sqlite3
