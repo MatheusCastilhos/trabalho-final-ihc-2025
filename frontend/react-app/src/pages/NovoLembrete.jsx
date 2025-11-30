@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
+import { createReminder } from "../api/lembretes";
 
 export default function NovoLembrete() {
   const navigate = useNavigate();
@@ -13,6 +14,9 @@ export default function NovoLembrete() {
     repeat: false,
     repeatFrequency: "diario",
   });
+
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -36,16 +40,47 @@ export default function NovoLembrete() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Novo lembrete:", form);
-    navigate("/lembretes");
+    setError("");
+
+    // validações mínimas
+    if (!form.date || !form.time) {
+      setError("Por favor, preencha data e horário do lembrete.");
+      return;
+    }
+
+    if (!form.title.trim()) {
+      setError("Por favor, preencha o título do lembrete.");
+      return;
+    }
+
+    // monta data_hora em formato aceitável pelo Django/DRF
+    const data_hora = `${form.date}T${form.time}:00`;
+
+    try {
+      setIsSubmitting(true);
+
+      await createReminder({
+        titulo: form.title,
+        descricao: form.notes || "",
+        data_hora,
+        tipo: form.type, // <- AQUI: envia o tipo pro backend
+      });
+
+      // após salvar com sucesso, volta para lista
+      navigate("/lembretes");
+    } catch (err) {
+      setError(err.message || "Erro ao salvar lembrete.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="container">
       {/* Header */}
-      <Header username="Usuário" />
+      <Header />
 
       {/* Topo */}
       <header className="mb-4 pb-3 flex items-center border-b border-gray-200">
@@ -65,9 +100,13 @@ export default function NovoLembrete() {
         </div>
       </header>
 
+      {/* Mensagem de erro */}
+      {error && (
+        <p className="mb-3 text-center text-sm text-red-600">{error}</p>
+      )}
+
       {/* Form */}
       <form onSubmit={handleSubmit} className="mt-2 space-y-5">
-
         {/* Data + Hora */}
         <div className="flex gap-3">
           <div className="flex-1">
@@ -80,6 +119,7 @@ export default function NovoLembrete() {
               value={form.date}
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
+              required
             />
           </div>
 
@@ -93,6 +133,7 @@ export default function NovoLembrete() {
               value={form.time}
               onChange={handleChange}
               className="w-full px-3 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
+              required
             />
           </div>
         </div>
@@ -109,6 +150,7 @@ export default function NovoLembrete() {
             onChange={handleChange}
             className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
             placeholder="Ex.: Tomar medicamento da pressão"
+            required
           />
         </div>
 
@@ -198,7 +240,7 @@ export default function NovoLembrete() {
           />
         </div>
 
-        {/* Repetição */}
+        {/* Repetição (apenas UI por enquanto) */}
         <div className="pt-1 border-t border-gray-200">
           <label className="flex items-center gap-2 mb-3">
             <input
@@ -215,13 +257,11 @@ export default function NovoLembrete() {
 
           {form.repeat && (
             <div className="ml-2 mt-1 space-y-2">
-
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Frequência
               </label>
 
               <div className="flex gap-2">
-
                 <button
                   type="button"
                   onClick={() => handleFrequencyChange("diario")}
@@ -266,7 +306,6 @@ export default function NovoLembrete() {
                 >
                   Mensal
                 </button>
-
               </div>
             </div>
           )}
@@ -275,9 +314,10 @@ export default function NovoLembrete() {
         {/* Botão Final */}
         <button
           type="submit"
-          className="w-full py-4 rounded-lg bg-[#3A5FCD] text-white text-lg font-semibold shadow-md mt-1"
+          disabled={isSubmitting}
+          className="w-full py-4 rounded-lg bg-[#3A5FCD] text-white text-lg font-semibold shadow-md mt-1 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          Salvar lembrete
+          {isSubmitting ? "Salvando..." : "Salvar lembrete"}
         </button>
       </form>
     </div>

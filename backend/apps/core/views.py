@@ -6,7 +6,28 @@ from rest_framework.authtoken.models import Token
 
 from drf_spectacular.utils import extend_schema, OpenApiTypes
 
+from django.contrib.auth import authenticate
+import unicodedata
+
 from .serializers import UserSerializer
+
+
+def normalize_username(raw: str) -> str:
+  """
+  Converte username para:
+  - sem espaços nas pontas
+  - minúsculo
+  - sem acentos
+  """
+  if not raw:
+      return ""
+  normalized = unicodedata.normalize("NFD", raw.strip().lower())
+  # remove caracteres de acento (combining marks)
+  normalized = "".join(
+      ch for ch in normalized
+      if unicodedata.category(ch) != "Mn"
+  )
+  return normalized
 
 
 @extend_schema(
@@ -31,7 +52,11 @@ def register_view(request):
     View para registrar um novo usuário.
     Recebe 'username', 'email', 'password' via POST.
     """
-    serializer = UserSerializer(data=request.data)
+    data = request.data.copy()
+    if "username" in data:
+        data["username"] = normalize_username(data["username"])
+
+    serializer = UserSerializer(data=data)
 
     if serializer.is_valid():
         # Salva o novo usuário no banco
@@ -50,6 +75,57 @@ def register_view(request):
 
     # Se os dados não forem válidos (ex: usuário já existe)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    request=OpenApiTypes.OBJECT,
+    responses={
+        200: OpenApiTypes.OBJECT,
+        400: OpenApiTypes.OBJECT,
+    },
+    description=(
+        "Realiza login de um usuário.\n\n"
+        "Campos esperados no corpo da requisição:\n"
+        "- username (string)\n"
+        "- password (string)\n\n"
+        "Retorna um token de autenticação."
+    ),
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    """
+    View de login customizada.
+    Normaliza o username (minúsculo + sem acentos) antes de autenticar.
+    """
+    username_raw = request.data.get("username", "")
+    password = request.data.get("password", "")
+
+    if not username_raw or not password:
+        return Response(
+            {"detail": "Informe username e password."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    username = normalize_username(username_raw)
+
+    user = authenticate(username=username, password=password)
+
+    if not user:
+        return Response(
+            {"detail": "Credenciais inválidas."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    token, _ = Token.objects.get_or_create(user=user)
+
+    data = {
+        "token": token.key,
+        "user_id": user.pk,
+        "email": user.email,
+        "username": user.username,
+    }
+    return Response(data, status=status.HTTP_200_OK)
 
 
 @extend_schema(

@@ -1,11 +1,29 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { logoutUser } from "../api/auth";
 
-export default function Header({ username = "Usuário", onLogout }) {
+export default function Header() {
   const navigate = useNavigate();
+  const [username, setUsername] = useState("Usuário");
 
-  const handleLogout = () => {
-    if (onLogout) onLogout();
-    else navigate("/");
+  useEffect(() => {
+    const storedName = localStorage.getItem("username");
+    if (storedName) setUsername(storedName);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      // tenta invalidar o token no backend
+      await logoutUser();
+    } catch (e) {
+      console.error("Erro ao deslogar no backend:", e);
+    }
+
+    // limpa tudo no front
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("username");
+
+    navigate("/login");
   };
 
   return (
@@ -17,11 +35,8 @@ export default function Header({ username = "Usuário", onLogout }) {
         px-2
         rounded-xl
       "
-      style={{
-        marginTop: "10px",
-      }}
+      style={{ marginTop: "10px" }}
     >
-      {/* Saudação */}
       <div className="leading-tight">
         <p className="text-base text-gray-700">Bem-vindo,</p>
         <p className="text-2xl font-semibold text-gray-900">
@@ -29,7 +44,6 @@ export default function Header({ username = "Usuário", onLogout }) {
         </p>
       </div>
 
-      {/* Botão sair (maior, mais legível, mais tocável) */}
       <button
         onClick={handleLogout}
         className="

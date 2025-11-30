@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Header from "../components/Header";
+import { createContact } from "../api/contatos";
 
 export default function NovoContato() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
     name: "",
-    relation: "",
     phone: "",
     type: "familia",
+    relation: "",
     notes: "",
     isEmergency: false,
   });
+
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -29,22 +33,42 @@ export default function NovoContato() {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // aqui depois vamos chamar o backend (POST /api/contatos/)
-    console.log("Novo contato (apenas front por enquanto):", form);
+    if (!form.name.trim()) {
+      setError("Por favor, informe o nome do contato.");
+      return;
+    }
 
-    // por enquanto, volta para a lista de contatos
-    navigate("/contatos");
+    if (!form.phone.trim()) {
+      setError("Por favor, informe o telefone.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      // Envia somente o que o backend aceita
+      await createContact({
+        nome: form.name.trim(),
+        telefone: form.phone.trim(),
+        is_emergencia: form.isEmergency,
+      });
+
+      navigate("/contatos");
+    } catch (err) {
+      setError(err.message || "Erro ao salvar contato.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="container">
-      {/* Header geral */}
-      <Header username="Usuário" />
+      <Header />
 
-      {/* Cabeçalho da página */}
       <header className="mb-4 pb-3 flex items-center border-b border-gray-200">
         <Link
           to="/contatos"
@@ -62,7 +86,10 @@ export default function NovoContato() {
         </div>
       </header>
 
-      {/* Formulário – sem container rolável interno, deixa a página rolar normal */}
+      {error && (
+        <p className="mb-3 text-center text-sm text-red-600">{error}</p>
+      )}
+
       <form onSubmit={handleSubmit} className="mt-2 space-y-5">
         {/* Nome */}
         <div>
@@ -75,11 +102,11 @@ export default function NovoContato() {
             value={form.name}
             onChange={handleChange}
             className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
-            placeholder="Ex.: Maria (filha)"
+            placeholder="Ex.: Maria"
           />
         </div>
 
-        {/* Relação */}
+        {/* Relação (somente visual) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Relação
@@ -89,8 +116,8 @@ export default function NovoContato() {
             name="relation"
             value={form.relation}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
-            placeholder="Ex.: Filha, Filho, Cardiologista..."
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base"
+            placeholder="Ex.: Filha, Filho, Médico..."
           />
         </div>
 
@@ -104,12 +131,12 @@ export default function NovoContato() {
             name="phone"
             value={form.phone}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD]"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base"
             placeholder="(11) 99999-9999"
           />
         </div>
 
-        {/* Tipo de contato – botões em vez de select */}
+        {/* Tipo (não vai pro backend, só pra UI mesmo) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Tipo de contato
@@ -119,14 +146,11 @@ export default function NovoContato() {
             <button
               type="button"
               onClick={() => handleTypeChange("familia")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "familia"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
+              className={`flex-1 px-3 py-3 rounded-lg text-sm font-semibold border ${
+                form.type === "familia"
+                  ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
+                  : "bg-white text-gray-800 border-gray-300"
+              }`}
             >
               Família
             </button>
@@ -134,14 +158,11 @@ export default function NovoContato() {
             <button
               type="button"
               onClick={() => handleTypeChange("amigo")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "amigo"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
+              className={`flex-1 px-3 py-3 rounded-lg text-sm font-semibold border ${
+                form.type === "amigo"
+                  ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
+                  : "bg-white text-gray-800 border-gray-300"
+              }`}
             >
               Amigo
             </button>
@@ -151,14 +172,11 @@ export default function NovoContato() {
             <button
               type="button"
               onClick={() => handleTypeChange("medico")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "medico"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
+              className={`flex-1 px-3 py-3 rounded-lg text-sm font-semibold border ${
+                form.type === "medico"
+                  ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
+                  : "bg-white text-gray-800 border-gray-300"
+              }`}
             >
               Médico
             </button>
@@ -166,21 +184,18 @@ export default function NovoContato() {
             <button
               type="button"
               onClick={() => handleTypeChange("outro")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "outro"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
+              className={`flex-1 px-3 py-3 rounded-lg text-sm font-semibold border ${
+                form.type === "outro"
+                  ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
+                  : "bg-white text-gray-800 border-gray-300"
+              }`}
             >
               Outro
             </button>
           </div>
         </div>
 
-        {/* Observações */}
+        {/* Observações (não enviamos pro back, é só UI) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Observações
@@ -190,12 +205,12 @@ export default function NovoContato() {
             rows="3"
             value={form.notes}
             onChange={handleChange}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base focus:outline-none focus:ring-2 focus:ring-[#3A5FCD] resize-none"
-            placeholder="Ex.: Melhor horário para ligar, cuidados especiais..."
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base resize-none"
+            placeholder="Ex.: Melhor horário para ligar, cuidados..."
           />
         </div>
 
-        {/* Contato de emergência */}
+        {/* Contato de emergência (vai pro backend) */}
         <div className="pt-1 border-t border-gray-200">
           <label className="flex items-center gap-2">
             <input
@@ -209,18 +224,14 @@ export default function NovoContato() {
               Marcar como contato de emergência
             </span>
           </label>
-          <p className="text-xs text-gray-500 mt-1 ml-6">
-            Esses contatos podem aparecer primeiro na lista e no botão de
-            emergência.
-          </p>
         </div>
 
-        {/* Botão final */}
         <button
           type="submit"
-          className="w-full py-4 rounded-lg bg-[#3A5FCD] text-white text-lg font-semibold shadow-md mt-1"
+          disabled={isSubmitting}
+          className="w-full py-4 rounded-lg bg-[#3A5FCD] text-white text-lg font-semibold shadow-md mt-1 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          Salvar contato
+          {isSubmitting ? "Salvando..." : "Salvar contato"}
         </button>
       </form>
     </div>

@@ -1,19 +1,52 @@
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
+import { fetchContacts } from "../api/contatos";
 
 function Contatos() {
   const navigate = useNavigate();
+
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const handleAddContact = () => {
     navigate("/contatos/novo");
   };
 
+  useEffect(() => {
+    async function loadContacts() {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await fetchContacts();
+        setContacts(data || []);
+      } catch (err) {
+        setError(err.message || "Erro ao carregar contatos.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadContacts();
+  }, []);
+
+  // Ícone baseado no tipo — por enquanto sempre fa-user, mas no futuro pode vir do back
+  const getContactIcon = (contato) => {
+    // COMO o backend não salva "tipo", deixamos apenas o comportamento desejado:
+    // médico usando ícone de médico se o nome indicar "Dr", "Dra"
+    const nome = contato.nome.toLowerCase();
+
+    if (nome.startsWith("dr ") || nome.startsWith("dr.") || nome.startsWith("dra"))
+      return "fas fa-user-md";
+
+    return "fas fa-user";
+  };
+
   return (
     <div className="container">
-      {/* Header geral */}
-      <Header username="Usuário" />
+      <Header />
 
-      {/* Cabeçalho da página */}
       <header className="mb-4 pb-3 flex items-center border-b border-gray-200">
         <Link
           to="/dashboard"
@@ -31,7 +64,6 @@ function Contatos() {
         </div>
       </header>
 
-      {/* Botão de emergência */}
       <div className="bg-[#FDE2E2] text-[#C53030] rounded-3xl p-6 text-center mb-6 shadow-md border border-[#F7CACA]">
         <i className="fas fa-exclamation-triangle text-5xl mb-3" />
         <h2 className="text-lg font-semibold tracking-wide">
@@ -39,68 +71,69 @@ function Contatos() {
         </h2>
       </div>
 
-      {/* Lista de contatos rápidos */}
       <div className="mb-6">
         <h3 className="mb-4 text-primary font-semibold text-lg">
           Contatos Rápidos
         </h3>
 
-        <div className="bg-white rounded-3xl p-4 mb-3 flex items-center shadow-sm border border-gray-100">
-          <div className="bg-[#DCE6FF] rounded-full w-12 h-12 flex justify-center items-center text-primary mr-4 shadow">
-            <i className="fas fa-user" />
-          </div>
+        {loading && (
+          <p className="text-center text-sm text-gray-600">
+            Carregando contatos...
+          </p>
+        )}
 
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">Maria (filha)</p>
-            <p className="text-sm text-gray-600">(11) 99999-9999</p>
-          </div>
+        {error && !loading && (
+          <p className="text-center text-sm text-red-600">{error}</p>
+        )}
 
-          <button
-            type="button"
-            className="bg-[#3A5FCD] border-none rounded-full w-10 h-10 flex justify-center items-center cursor-pointer text-white shadow-md"
-          >
-            <i className="fas fa-phone" />
-          </button>
-        </div>
+        {!loading && !error && contacts.length === 0 && (
+          <p className="text-center text-sm text-gray-600">
+            Você ainda não tem contatos cadastrados.
+          </p>
+        )}
 
-        <div className="bg-white rounded-3xl p-4 mb-3 flex items-center shadow-sm border border-gray-100">
-          <div className="bg-[#DCE6FF] rounded-full w-12 h-12 flex justify-center items-center text-primary mr-4 shadow">
-            <i className="fas fa-user" />
-          </div>
+        {!loading &&
+          !error &&
+          contacts.map((contato) => (
+            <div
+              key={contato.id}
+              className="bg-white rounded-3xl p-4 mb-3 flex items-center shadow-sm border border-gray-100"
+            >
+              {/* Ícone redondo */}
+              <div
+                className="
+                  rounded-full w-12 h-12 flex justify-center items-center shadow mr-4
+                  bg-[#DCE6FF] text-primary
+                "
+              >
+                <i className={getContactIcon(contato)} />
+              </div>
 
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">João (filho)</p>
-            <p className="text-sm text-gray-600">(11) 99999-9999</p>
-          </div>
+              {/* Nome + Telefone */}
+              <div className="flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="font-semibold text-gray-900">{contato.nome}</p>
 
-          <button
-            type="button"
-            className="bg-[#3A5FCD] border-none rounded-full w-10 h-10 flex justify-center items-center cursor-pointer text-white shadow-md"
-          >
-            <i className="fas fa-phone" />
-          </button>
-        </div>
+                  {/* Estrelinha da emergência */}
+                  {contato.is_emergencia && (
+                    <span className="text-yellow-500 text-sm">⭐</span>
+                  )}
+                </div>
 
-        <div className="bg-white rounded-3xl p-4 mb-3 flex items-center shadow-sm border border-gray-100">
-          <div className="bg-[#DCE6FF] rounded-full w-12 h-12 flex justify-center items-center text-primary mr-4 shadow">
-            <i className="fas fa-user-md" />
-          </div>
+                <p className="text-sm text-gray-600">{contato.telefone}</p>
+              </div>
 
-          <div className="flex-1">
-            <p className="font-semibold text-gray-900">Dr. Silva</p>
-            <p className="text-sm text-gray-600">Cardiologista</p>
-          </div>
-
-          <button
-            type="button"
-            className="bg-[#3A5FCD] border-none rounded-full w-10 h-10 flex justify-center items-center cursor-pointer text-white shadow-md"
-          >
-            <i className="fas fa-phone" />
-          </button>
-        </div>
+              {/* Botão de chamada */}
+              <button
+                type="button"
+                className="bg-[#3A5FCD] border-none rounded-full w-10 h-10 flex justify-center items-center cursor-pointer text-white shadow-md"
+              >
+                <i className="fas fa-phone" />
+              </button>
+            </div>
+          ))}
       </div>
 
-      {/* Botão para adicionar contato */}
       <button
         onClick={handleAddContact}
         className="bg-[#3A5FCD] text-white border-none rounded-lg py-3 w-full cursor-pointer text-base font-medium shadow-md"

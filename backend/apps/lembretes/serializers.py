@@ -7,16 +7,17 @@ class LembreteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lembrete
-        # Estes são os campos que a API vai aceitar e retornar
+        # Campos que a API vai aceitar e retornar
         fields = [
-            'id', 
-            'usuario', 
+            'id',
+            'usuario',
             'usuario_username',
-            'titulo', 
-            'descricao', 
-            'data_hora', 
+            'titulo',
+            'descricao',
+            'data_hora',
             'concluido',
-            'criado_em'
+            'tipo',        # <- novo campo aqui
+            'criado_em',
         ]
 
         # Impede que o usuário 'troque' o dono do lembrete

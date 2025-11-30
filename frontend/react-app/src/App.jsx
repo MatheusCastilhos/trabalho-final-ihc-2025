@@ -16,6 +16,10 @@ import Assistente from "./pages/Assistente";
 import Contatos from "./pages/Contatos";
 import NovoContato from "./pages/NovoContato";
 
+import ProtectedRoute from "./components/ProtectedRoute";
+import PublicRoute from "./components/PublicRoute";
+import NotFoundRedirect from "./components/NotFoundRedirect";
+
 import "./App.css";
 
 function App() {
@@ -23,30 +27,35 @@ function App() {
     <Router>
       <div className="app">
         <Routes>
-          {/* Tela inicial (não logado) */}
-          <Route path="/" element={<Home />} />
+          {/* Rotas públicas — bloqueadas para quem já está logado */}
+          <Route element={<PublicRoute />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
 
-          {/* Autenticação */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* Rotas protegidas — só acessa se tiver token */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Área logada */}
-          <Route path="/dashboard" element={<Dashboard />} />
+            {/* Lembretes */}
+            <Route path="/lembretes" element={<Lembretes />} />
+            <Route path="/lembretes/novo" element={<NovoLembrete />} />
 
-          {/* Lembretes */}
-          <Route path="/lembretes" element={<Lembretes />} />
-          <Route path="/lembretes/novo" element={<NovoLembrete />} />
+            {/* Diário */}
+            <Route path="/diario" element={<Diario />} />
+            <Route path="/diario/novo" element={<NovaAnotacao />} />
 
-          {/* Diário */}
-          <Route path="/diario" element={<Diario />} />
-          <Route path="/diario/novo" element={<NovaAnotacao />} />
+            {/* Assistente */}
+            <Route path="/assistente" element={<Assistente />} />
 
-          {/* Assistente */}
-          <Route path="/assistente" element={<Assistente />} />
+            {/* Contatos */}
+            <Route path="/contatos" element={<Contatos />} />
+            <Route path="/contatos/novo" element={<NovoContato />} />
+          </Route>
 
-          {/* Contatos */}
-          <Route path="/contatos" element={<Contatos />} />
-          <Route path="/contatos/novo" element={<NovoContato />} />
+          {/* Qualquer outra coisa cai aqui */}
+          <Route path="*" element={<NotFoundRedirect />} />
         </Routes>
       </div>
     </Router>

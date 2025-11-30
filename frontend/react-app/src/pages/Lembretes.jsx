@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Header from "../components/Header";
+import { fetchReminders } from "../api/lembretes";
 
 function Lembretes() {
   const navigate = useNavigate();
@@ -8,6 +9,28 @@ function Lembretes() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [tempDate, setTempDate] = useState(null);
+
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Carrega lembretes do backend ao montar a página
+  useEffect(() => {
+    async function loadReminders() {
+      try {
+        setLoading(true);
+        setError("");
+        const data = await fetchReminders();
+        setReminders(data || []);
+      } catch (err) {
+        setError(err.message || "Erro ao carregar lembretes.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadReminders();
+  }, []);
 
   const handleAddReminder = () => {
     navigate("/lembretes/novo");
@@ -35,6 +58,41 @@ function Lembretes() {
     const day = `${date.getDate()}`.padStart(2, "0");
     return `${year}-${month}-${day}`;
   };
+
+  // horário sem briga com fuso
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    return dateString.slice(11, 16); // "YYYY-MM-DDTHH:MM:SS" -> "HH:MM"
+  };
+
+  const isSameDay = (d1, d2) => {
+    return (
+      d1.getFullYear() === d2.getFullYear() &&
+      d1.getMonth() === d2.getMonth() &&
+      d1.getDate() === d2.getDate()
+    );
+  };
+
+  // escolhe ícone com base no tipo vindo do back
+  const getIconClass = (tipo) => {
+    switch (tipo) {
+      case "medicamento":
+        return "fas fa-pills";
+      case "refeicao":
+        return "fas fa-utensils";
+      case "consulta":
+        return "fas fa-user-md";
+      default:
+        return "fas fa-bell";
+    }
+  };
+
+  // filtra lembretes pelo dia atual selecionado
+  const remindersOfDay = reminders.filter((reminder) => {
+    if (!reminder.data_hora) return false;
+    const d = new Date(reminder.data_hora);
+    return isSameDay(d, currentDate);
+  });
 
   const today = new Date();
   const isToday = currentDate.toDateString() === today.toDateString();
@@ -68,7 +126,7 @@ function Lembretes() {
   return (
     <div className="container">
       {/* Header geral (usuário + sair) */}
-      <Header username="Usuário" />
+      <Header />
 
       {/* Cabeçalho da página de lembretes */}
       <header className="mb-4 pb-3 flex items-center border-b border-gray-200">
@@ -164,48 +222,44 @@ function Lembretes() {
         )}
       </div>
 
-      {/* Lista de lembretes (mock) */}
+      {/* Lista de lembretes vinda da API */}
       <div className="space-y-3 mb-8">
-        <div className="bg-white rounded-3xl p-4 flex items-center shadow-md">
-          <i className="fas fa-pills text-primary mr-4 text-xl"></i>
-          <p>
-            <span className="font-medium">08:00</span> – Tomar medicamento da
-            pressão
+        {loading && (
+          <p className="text-center text-sm text-gray-600">
+            Carregando lembretes...
           </p>
-        </div>
+        )}
 
-        <div className="bg-white rounded-3xl p-4 flex items-center shadow-md">
-          <i className="fas fa-utensils text-primary mr-4 text-xl"></i>
-          <p>
-            <span className="font-medium">12:00</span> – Almoço
+        {error && !loading && (
+          <p className="text-center text-sm text-red-600">{error}</p>
+        )}
+
+        {!loading && !error && remindersOfDay.length === 0 && (
+          <p className="text-center text-sm text-gray-600">
+            Nenhum lembrete para este dia.
           </p>
-        </div>
+        )}
 
-        <div className="bg-white rounded-3xl p-4 flex items-center shadow-md relative">
-          <i className="fas fa-pills text-primary mr-4 text-xl"></i>
-          <p>
-            <span className="font-medium">14:30</span> – Tomar medicamento para
-            diabetes
-          </p>
-
-          <button className="absolute right-4 bg-primary text-white text-xs px-3 py-1 rounded-lg">
-            AGORA
-          </button>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 flex items-center shadow-md">
-          <i className="fas fa-utensils text-primary mr-4 text-xl"></i>
-          <p>
-            <span className="font-medium">18:00</span> – Jantar
-          </p>
-        </div>
-
-        <div className="bg-white rounded-3xl p-4 flex items-center shadow-md">
-          <i className="fas fa-user-md text-primary mr-4 text-xl"></i>
-          <p>
-            <span className="font-medium">15:00</span> – Consulta com Dr. Silva
-          </p>
-        </div>
+        {!loading &&
+          !error &&
+          remindersOfDay.map((reminder) => (
+            <div
+              key={reminder.id}
+              className="bg-white rounded-3xl p-4 flex items-center shadow-md"
+            >
+              <i
+                className={`${getIconClass(
+                  reminder.tipo
+                )} text-primary mr-4 text-xl`}
+              ></i>
+              <p>
+                <span className="font-medium">
+                  {formatTime(reminder.data_hora)}
+                </span>{" "}
+                – {reminder.titulo || reminder.descricao}
+              </p>
+            </div>
+          ))}
       </div>
 
       {/* Botão principal */}
