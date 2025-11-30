@@ -7,21 +7,12 @@ export default function NovaAnotacao() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    type: "texto",
     title: "",
     textContent: "",
   });
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleTypeChange = (newType) => {
-    setForm((prev) => ({
-      ...prev,
-      type: newType,
-    }));
-    setError("");
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -31,11 +22,6 @@ export default function NovaAnotacao() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-
-    if (form.type !== "texto") {
-      setError("Esta função ainda não está disponível.");
-      return;
-    }
 
     if (!form.textContent.trim()) {
       setError("Por favor, escreva o texto da anotação.");
@@ -83,61 +69,7 @@ export default function NovaAnotacao() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-5 mt-2">
-        {/* Tipo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tipo de anotação
-          </label>
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleTypeChange("texto")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "texto"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
-            >
-              Texto
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTypeChange("foto")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "foto"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
-            >
-              Foto
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleTypeChange("audio")}
-              className={`
-                flex-1 px-3 py-3 rounded-lg text-sm font-semibold border
-                ${
-                  form.type === "audio"
-                    ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
-                    : "bg-white text-gray-800 border-gray-300"
-                }
-              `}
-            >
-              Áudio
-            </button>
-          </div>
-        </div>
-
-        {/* Título (só visual por enquanto) */}
+        {/* Título (apenas visual) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Título
@@ -152,26 +84,20 @@ export default function NovaAnotacao() {
           />
         </div>
 
-        {/* Conteúdo */}
-        {form.type === "texto" ? (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Texto
-            </label>
-            <textarea
-              name="textContent"
-              rows="4"
-              value={form.textContent}
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base resize-none"
-              placeholder="Escreva aqui sua anotação..."
-            />
-          </div>
-        ) : (
-          <p className="text-center text-sm text-gray-600">
-            Esta função ainda não está disponível.
-          </p>
-        )}
+        {/* Texto da anotação */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Texto
+          </label>
+          <textarea
+            name="textContent"
+            rows="4"
+            value={form.textContent}
+            onChange={handleChange}
+            className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-gray-900 text-base resize-none"
+            placeholder="Escreva aqui sua anotação..."
+          />
+        </div>
 
         {/* Botão final */}
         <button

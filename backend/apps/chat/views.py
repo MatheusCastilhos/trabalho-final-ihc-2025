@@ -1,9 +1,10 @@
+# backend/apps/chat/views.py
+from django.utils import timezone
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
-from django.utils import timezone
 
 from drf_spectacular.utils import extend_schema
 
@@ -31,30 +32,73 @@ class ChatAPIView(APIView):
 
     def _get_rag_context(self, user, now):
         """
-        Recupera lembretes, contatos e data/hora atual para montar um
-        contexto textual que será injetado no histórico como mensagem de sistema.
+        Monta um texto de contexto com:
+        - Dados do paciente (nome, data de nascimento, idade aproximada)
+        - Data/hora atual (em horário local)
+        - Lembretes pendentes
+        - Contatos de emergência
         """
 
-        # 1. Recuperar dados relevantes
+        context_parts = []
+
+        # 1) Dados do paciente (PerfilPaciente ligado ao User)
+        #    Assumindo OneToOneField com related_name="perfil_paciente"
+        perfil = getattr(user, "perfil_paciente", None)
+        if perfil:
+            # Nome
+            nome = perfil.nome_completo or user.username
+
+            # Data de nascimento + idade aproximada
+            linha_paciente = f"- Nome: {nome}"
+            idade_str = None
+
+            if perfil.data_nascimento:
+                linha_paciente += (
+                    f", Data de nascimento: "
+                    f"{perfil.data_nascimento.strftime('%d/%m/%Y')}"
+                )
+
+                # Idade aproximada (em anos)
+                today = timezone.localdate()
+                dn = perfil.data_nascimento
+                idade = (
+                    today.year
+                    - dn.year
+                    - ((today.month, today.day) < (dn.month, dn.day))
+                )
+                idade_str = f"{idade} anos"
+
+            if idade_str:
+                linha_paciente += f" (idade aproximada: {idade_str})"
+
+            context_parts.append("DADOS DO PACIENTE:")
+            context_parts.append(linha_paciente)
+            context_parts.append("")  # linha em branco para separar
+
+        # 2) Data/hora atual — converte para timezone local do Django
+        now_local = timezone.localtime(now)
+        context_parts.append(
+            f"Data/Hora Atual: {now_local.strftime('%d/%m/%Y %H:%M')}"
+        )
+
+        # 3) Lembretes pendentes (comparação em UTC, exibição em local)
         lembretes = (
             Lembrete.objects
             .filter(usuario=user, concluido=False, data_hora__gte=now)
             .order_by('data_hora')[:5]
         )
 
-        contatos = Contato.objects.filter(usuario=user, is_emergencia=True)
-
-        # 2. Montar o texto do contexto
-        context_parts = []
-        context_parts.append(f"Data/Hora Atual: {now.strftime('%d/%m/%Y %H:%M')}")
-
         if lembretes.exists():
             context_parts.append("\nLEMBRETES PENDENTES:")
             for lem in lembretes:
+                lem_local = timezone.localtime(lem.data_hora)
                 context_parts.append(
-                    f"- Título: {lem.titulo}, Data: {lem.data_hora.strftime('%d/%m %H:%M')}"
+                    f"- Título: {lem.titulo}, "
+                    f"Data/Hora: {lem_local.strftime('%d/%m %H:%M')}"
                 )
 
+        # 4) Contatos de emergência
+        contatos = Contato.objects.filter(usuario=user, is_emergencia=True)
         if contatos.exists():
             context_parts.append("\nCONTATOS DE EMERGÊNCIA:")
             for c in contatos:
@@ -62,17 +106,17 @@ class ChatAPIView(APIView):
                     f"- Nome: {c.nome}, Telefone: {c.telefone}"
                 )
 
-        # Se só tem a data/hora, então nada relevante foi encontrado
-        if len(context_parts) > 1:
-            return "\n".join(context_parts)
-
-        return None
+        # Junta tudo em um único bloco de texto
+        return "\n".join(context_parts)
 
     def post(self, request, *args, **kwargs):
         # 1. Validar o JSON de entrada
         serializer = ChatInputSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         user = request.user
         user_input = serializer.validated_data["message"]
@@ -82,7 +126,7 @@ class ChatAPIView(APIView):
         history_qs = HistoricoChat.objects.filter(usuario=user)
         history_list = [h.to_dict() for h in history_qs]
 
-        # 3. Gerar contexto RAG
+        # 3. Gerar contexto RAG (dados do paciente + lembretes + contatos)
         rag_context = self._get_rag_context(user, now)
 
         if rag_context:
@@ -104,7 +148,7 @@ class ChatAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        # 5. Persistir histórico
+        # 5. Persistir histórico (no banco, em UTC mesmo)
         HistoricoChat.objects.bulk_create([
             HistoricoChat(usuario=user, role='user', content=user_input),
             HistoricoChat(usuario=user, role='assistant', content=answer),

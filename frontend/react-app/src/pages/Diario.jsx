@@ -14,7 +14,6 @@ export default function Diario() {
     navigate("/diario/novo");
   };
 
-  // Carregar entradas do diário ao montar a página
   useEffect(() => {
     async function loadDiary() {
       try {
@@ -43,32 +42,17 @@ export default function Diario() {
     });
   };
 
-  // Com a limitação atual, tratamos tudo como texto
-  const getEntryTypeLabel = () => {
-    return "Texto";
-  };
-
-  const getEntryIconClass = () => {
-    return "fas fa-file-alt";
-  };
-
-  const getEntryDescription = (entry) => {
-    if (entry.texto) {
-      const txt = entry.texto.trim();
-      if (txt.length <= 60) return txt;
-      return txt.slice(0, 60) + "...";
-    }
-    return "Entrada sem descrição.";
+  // evita pegar timezone errado
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    return dateString.slice(11, 16); // pega HH:MM direto
   };
 
   return (
     <div className="container">
-      {/* Header geral */}
       <Header />
 
-      {/* MAIN: espaço principal da página */}
       <main className="flex-1 flex flex-col pb-6">
-        {/* Cabeçalho da página */}
         <header className="mb-4 pb-3 flex items-center border-b border-gray-200">
           <Link
             to="/dashboard"
@@ -86,7 +70,6 @@ export default function Diario() {
           </div>
         </header>
 
-        {/* Lista de anotações */}
         <div className="flex-1 overflow-y-auto space-y-4 pr-1 mb-6">
           {loading && (
             <p className="text-center text-sm text-gray-600">
@@ -112,19 +95,19 @@ export default function Diario() {
                 className="bg-white rounded-3xl p-4 shadow-md"
               >
                 <div className="font-bold mb-2.5 text-primary text-lg">
-                  {formatDate(entry.data_criacao)} — {getEntryTypeLabel()}
+                  {formatDate(entry.data_criacao)} — {formatTime(entry.data_criacao)}
                 </div>
-                <div className="flex items-center">
-                  <i
-                    className={`${getEntryIconClass()} text-primary mr-3 text-base`}
-                  ></i>
-                  <p>{getEntryDescription(entry)}</p>
+
+                <div className="flex items-start">
+                  <i className="fas fa-file-alt text-primary mr-3 text-base mt-1"></i>
+                  <p className="whitespace-pre-line text-gray-800">
+                    {entry.texto || "Entrada vazia."}
+                  </p>
                 </div>
               </div>
             ))}
         </div>
 
-        {/* Botão inferior */}
         <button
           onClick={handleAddNote}
           className="

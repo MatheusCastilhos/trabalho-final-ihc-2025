@@ -1,3 +1,4 @@
+// src/pages/Login.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../api/auth";
@@ -26,18 +27,23 @@ export default function Login() {
       setIsLoading(true);
 
       const data = await loginUser({
-        username: form.username,   // backend normaliza
+        username: form.username,
         password: form.password,
       });
 
-      // token de autenticação
       if (data.token) {
         localStorage.setItem("authToken", data.token);
       }
 
-      // salva username normalizado (vem do back)
       if (data.username) {
         localStorage.setItem("username", data.username);
+
+        // Se não tiver displayName ainda (ex: login em outro device),
+        // usa o username como fallback.
+        const currentDisplay = localStorage.getItem("displayName");
+        if (!currentDisplay) {
+          localStorage.setItem("displayName", data.username);
+        }
       }
 
       navigate("/dashboard");
@@ -56,9 +62,7 @@ export default function Login() {
         </h1>
 
         {error && (
-          <p className="mb-4 text-center text-sm text-red-600">
-            {error}
-          </p>
+          <p className="mb-4 text-center text-sm text-red-600">{error}</p>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
