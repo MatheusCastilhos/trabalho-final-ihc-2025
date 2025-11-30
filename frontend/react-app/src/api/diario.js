@@ -22,16 +22,24 @@ function extractErrorMessage(data, fallback) {
   return fallback;
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(isMultipart = false) {
   const token = localStorage.getItem("authToken");
   if (!token) {
     throw new Error("Usuário não autenticado.");
   }
 
-  return {
+  const headers = {
     Accept: "application/json",
     Authorization: `Token ${token}`,
   };
+
+  // Se NÃO for multipart (arquivo), mandamos JSON.
+  // Se FOR multipart, o navegador define o Content-Type com o boundary sozinho.
+  if (!isMultipart) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
 }
 
 // GET /api/diario/
@@ -56,17 +64,18 @@ export async function fetchDiaryEntries() {
   return data;
 }
 
-// POST /api/diario/  (somente texto)
-export async function createDiaryEntry({ texto }) {
-  const baseHeaders = getAuthHeaders();
+// POST /api/diario/
+// Aceita tanto objeto JSON quanto FormData
+export async function createDiaryEntry(payload) {
+  const isMultipart = payload instanceof FormData;
+  const headers = getAuthHeaders(isMultipart);
+
+  const body = isMultipart ? payload : JSON.stringify(payload);
 
   const res = await fetch(`${API_URL}/api/diario/`, {
     method: "POST",
-    headers: {
-      ...baseHeaders,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ texto }),
+    headers,
+    body,
   });
 
   const data = await res.json().catch(() => null);
@@ -80,4 +89,22 @@ export async function createDiaryEntry({ texto }) {
   }
 
   return data;
+}
+
+// DELETE /api/diario/:id/
+export async function deleteDiaryEntry(id) {
+  const headers = getAuthHeaders();
+
+  const res = await fetch(`${API_URL}/api/diario/${id}/`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const errorMessage = extractErrorMessage(data, "Erro ao excluir anotação.");
+    throw new Error(errorMessage);
+  }
+
+  return true;
 }

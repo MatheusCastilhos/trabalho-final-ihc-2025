@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useParams } from "react-router-dom";
 import Header from "../components/Header";
-import { createReminder } from "../api/lembretes";
+import { createReminder, getReminder, updateReminder } from "../api/lembretes";
 
 export default function NovoLembrete() {
   const navigate = useNavigate();
+  const { id } = useParams(); // Se tiver ID, é edição
+
   const [form, setForm] = useState({
     date: "",
     time: "",
@@ -17,6 +19,44 @@ export default function NovoLembrete() {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
+
+  // Se for edição, carrega os dados
+  useEffect(() => {
+    if (id) {
+      async function loadData() {
+        setLoadingData(true);
+        try {
+          const data = await getReminder(id);
+          // data.data_hora vem como "YYYY-MM-DDTHH:MM:SSZ"
+          // Precisamos separar data e hora
+          if (data && data.data_hora) {
+            const dt = new Date(data.data_hora);
+            const yyyy = dt.getFullYear();
+            const mm = String(dt.getMonth() + 1).padStart(2, "0");
+            const dd = String(dt.getDate()).padStart(2, "0");
+            const hh = String(dt.getHours()).padStart(2, "0");
+            const min = String(dt.getMinutes()).padStart(2, "0");
+
+            setForm({
+              date: `${yyyy}-${mm}-${dd}`,
+              time: `${hh}:${min}`,
+              title: data.titulo,
+              type: data.tipo || "outro",
+              notes: data.descricao || "",
+              repeat: false, // backend não salva repetição ainda
+              repeatFrequency: "diario",
+            });
+          }
+        } catch (err) {
+          setError("Erro ao carregar dados do lembrete.");
+        } finally {
+          setLoadingData(false);
+        }
+      }
+      loadData();
+    }
+  }, [id]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -55,18 +95,39 @@ export default function NovoLembrete() {
       return;
     }
 
+    // Validação de Data Passada
+    const selectedDateTime = new Date(`${form.date}T${form.time}:00`);
+    const now = new Date();
+
+    // Tolerância de 1 minuto para evitar bugs de delay
+    if (selectedDateTime < new Date(now.getTime() - 60000)) {
+      setError("Não é possível criar lembretes no passado.");
+      return;
+    }
+
     // monta data_hora em formato aceitável pelo Django/DRF
     const data_hora = `${form.date}T${form.time}:00`;
 
     try {
       setIsSubmitting(true);
 
-      await createReminder({
-        titulo: form.title,
-        descricao: form.notes || "",
-        data_hora,
-        tipo: form.type, // <- AQUI: envia o tipo pro backend
-      });
+      if (id) {
+        // Edição
+        await updateReminder(id, {
+          titulo: form.title,
+          descricao: form.notes || "",
+          data_hora,
+          tipo: form.type,
+        });
+      } else {
+        // Criação
+        await createReminder({
+          titulo: form.title,
+          descricao: form.notes || "",
+          data_hora,
+          tipo: form.type,
+        });
+      }
 
       // após salvar com sucesso, volta para lista
       navigate("/lembretes");
@@ -76,6 +137,14 @@ export default function NovoLembrete() {
       setIsSubmitting(false);
     }
   };
+
+  if (loadingData) {
+    return (
+      <div className="container text-center pt-10">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container">
@@ -92,7 +161,7 @@ export default function NovoLembrete() {
         </Link>
 
         <h1 className="flex-1 text-center text-2xl font-semibold text-gray-900">
-          Novo lembrete
+          {id ? "Editar lembrete" : "Novo lembrete"}
         </h1>
 
         <div className="bg-white rounded-full w-11 h-11 flex justify-center items-center shadow text-primary">
@@ -317,7 +386,11 @@ export default function NovoLembrete() {
           disabled={isSubmitting}
           className="w-full py-4 rounded-lg bg-[#3A5FCD] text-white text-lg font-semibold shadow-md mt-1 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Salvando..." : "Salvar lembrete"}
+          {isSubmitting
+            ? "Salvando..."
+            : id
+            ? "Salvar alterações"
+            : "Salvar lembrete"}
         </button>
       </form>
     </div>

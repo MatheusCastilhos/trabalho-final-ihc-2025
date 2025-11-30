@@ -26,35 +26,63 @@ class ChatAPIView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    # Instância única — suficiente para o projeto
-    chat_engine = ChatEngine()
+    def get_engine(self):
+        """
+        Instancia o ChatEngine sob demanda.
+        Isso previne erros de carregamento de .env durante o 'migrate'.
+        """
+        if not hasattr(self, '_chat_engine'):
+            self._chat_engine = ChatEngine()
+        return self._chat_engine
 
     def _get_rag_context(self, user, now):
         """
-        Recupera lembretes, contatos e data/hora atual para montar um
-        contexto textual que será injetado no histórico como mensagem de sistema.
+        Recupera lembretes do DIA ATUAL (passados e futuros) e contatos
+        para montar um contexto textual para a IA.
         """
+        
+        # Converte para o horário local para filtrar corretamente pelo "dia de hoje"
+        today_local = timezone.localtime(now).date()
 
-        # 1. Recuperar dados relevantes
+        # 1. Recuperar lembretes:
+        # Filtramos por DATA igual a hoje (data_hora__date=today_local).
+        # Assim pegamos lembretes das 08:00 mesmo se agora forem 20:00.
         lembretes = (
             Lembrete.objects
-            .filter(usuario=user, concluido=False, data_hora__gte=now)
-            .order_by('data_hora')[:5]
+            .filter(
+                usuario=user, 
+                concluido=False, 
+                data_hora__date=today_local 
+            )
+            .order_by('data_hora')
         )
 
         contatos = Contato.objects.filter(usuario=user, is_emergencia=True)
 
+        # Definição do nome do paciente
+        nome_paciente = user.first_name if user.first_name else user.username
+
         # 2. Montar o texto do contexto
         context_parts = []
-        context_parts.append(f"Data/Hora Atual: {now.strftime('%d/%m/%Y %H:%M')}")
+        
+        # Cabeçalho do Contexto
+        context_parts.append(f"Nome do Paciente: {nome_paciente}")
+        context_parts.append(f"Data/Hora Atual: {timezone.localtime(now).strftime('%d/%m/%Y %H:%M')}")
 
+        # Lista de Lembretes
         if lembretes.exists():
-            context_parts.append("\nLEMBRETES PENDENTES:")
+            context_parts.append("\nAGENDA DE HOJE (PENDENTES/ATIVOS):")
             for lem in lembretes:
+                # Formata hora limpa (ex: 14:30)
+                hora_local = timezone.localtime(lem.data_hora).strftime('%H:%M')
+                # Ex: - [14:30] Tomar remédio X (Medicamento)
                 context_parts.append(
-                    f"- Título: {lem.titulo}, Data: {lem.data_hora.strftime('%d/%m %H:%M')}"
+                    f"- [{hora_local}] {lem.titulo} (Tipo: {lem.get_tipo_display()})"
                 )
+        else:
+            context_parts.append("\nNão há lembretes agendados para hoje.")
 
+        # Lista de Contatos
         if contatos.exists():
             context_parts.append("\nCONTATOS DE EMERGÊNCIA:")
             for c in contatos:
@@ -62,11 +90,27 @@ class ChatAPIView(APIView):
                     f"- Nome: {c.nome}, Telefone: {c.telefone}"
                 )
 
-        # Se só tem a data/hora, então nada relevante foi encontrado
-        if len(context_parts) > 1:
-            return "\n".join(context_parts)
+        return "\n".join(context_parts)
 
-        return None
+    def get(self, request, *args, **kwargs):
+        """
+        Retorna o histórico de conversas do usuário.
+        """
+        history_qs = HistoricoChat.objects.filter(usuario=request.user)
+        
+        data = []
+        for h in history_qs:
+            if h.role == 'system':
+                continue
+                
+            data.append({
+                "id": h.id,
+                "role": h.role,
+                "content": h.content,
+                "timestamp": h.timestamp
+            })
+            
+        return Response(data, status=status.HTTP_200_OK)
 
     def post(self, request, *args, **kwargs):
         # 1. Validar o JSON de entrada
@@ -82,29 +126,33 @@ class ChatAPIView(APIView):
         history_qs = HistoricoChat.objects.filter(usuario=user)
         history_list = [h.to_dict() for h in history_qs]
 
-        # 3. Gerar contexto RAG
+        # 3. Gerar contexto RAG atualizado
         rag_context = self._get_rag_context(user, now)
 
-        if rag_context:
-            history_list.append({
-                "role": "system",
-                "content": (
-                    "--- INÍCIO: CONTEXTO DO USUÁRIO ---\n"
-                    f"{rag_context}\n"
-                    "--- FIM: CONTEXTO DO USUÁRIO ---"
-                ),
-            })
+        # Injetamos o contexto atualizado como uma instrução de sistema
+        # imediatamente antes da resposta da IA, para garantir prioridade.
+        history_list.append({
+            "role": "system",
+            "content": (
+                "--- CONTEXTO ATUALIZADO (RAG) ---\n"
+                "Use as informações abaixo se forem relevantes para responder ao usuário:\n"
+                f"{rag_context}\n"
+                "-----------------------------------"
+            ),
+        })
 
         # 4. Chamada ao modelo
         try:
-            answer = self.chat_engine.send_message(user_input, history_list)
+            engine = self.get_engine()
+            answer = engine.send_message(user_input, history_list)
         except Exception as e:
             return Response(
-                {"error": f"Erro ao processar a mensagem: {str(e)}"},
+                {"error": f"Erro na IA: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
         # 5. Persistir histórico
+        # Salvamos apenas o que foi dito, não o contexto técnico injetado
         HistoricoChat.objects.bulk_create([
             HistoricoChat(usuario=user, role='user', content=user_input),
             HistoricoChat(usuario=user, role='assistant', content=answer),

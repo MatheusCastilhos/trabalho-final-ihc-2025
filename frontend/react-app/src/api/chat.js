@@ -35,6 +35,29 @@ function getAuthHeaders() {
   };
 }
 
+// BUSCAR HISTÓRICO (GET)
+export async function fetchChatHistory() {
+  const headers = getAuthHeaders();
+
+  const res = await fetch(`${API_URL}/api/chat/`, {
+    method: "GET",
+    headers,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const errorMessage = extractErrorMessage(
+      data,
+      "Erro ao carregar histórico."
+    );
+    throw new Error(errorMessage);
+  }
+
+  return data; // Lista de mensagens [{role, content, ...}]
+}
+
+// ENVIAR MENSAGEM (POST)
 export async function sendChatMessage(message) {
   const headers = getAuthHeaders();
 

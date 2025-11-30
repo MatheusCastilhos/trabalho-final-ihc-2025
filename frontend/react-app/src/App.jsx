@@ -41,6 +41,7 @@ function App() {
             {/* Lembretes */}
             <Route path="/lembretes" element={<Lembretes />} />
             <Route path="/lembretes/novo" element={<NovoLembrete />} />
+            <Route path="/lembretes/:id" element={<NovoLembrete />} />
 
             {/* Diário */}
             <Route path="/diario" element={<Diario />} />
@@ -52,6 +53,8 @@ function App() {
             {/* Contatos */}
             <Route path="/contatos" element={<Contatos />} />
             <Route path="/contatos/novo" element={<NovoContato />} />
+            {/* Rota para edição de contato */}
+            <Route path="/contatos/:id" element={<NovoContato />} />
           </Route>
 
           {/* Qualquer outra coisa cai aqui */}

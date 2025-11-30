@@ -22,16 +22,22 @@ function extractErrorMessage(data, fallback) {
   return fallback;
 }
 
-function getAuthHeaders() {
+function getAuthHeaders(isMultipart = false) {
   const token = localStorage.getItem("authToken");
   if (!token) {
     throw new Error("Usuário não autenticado.");
   }
 
-  return {
+  const headers = {
     Accept: "application/json",
     Authorization: `Token ${token}`,
   };
+
+  if (!isMultipart) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
 }
 
 // GET /api/contatos/
@@ -53,25 +59,59 @@ export async function fetchContacts() {
     throw new Error(errorMessage);
   }
 
-  return data; // lista de contatos
+  return data;
 }
 
-// POST /api/contatos/  (vamos usar depois no NovoContato)
-export async function createContact({ nome, telefone, is_emergencia = false }) {
-  const baseHeaders = getAuthHeaders();
+// GET /api/contatos/:id/
+export async function getContact(id) {
+  const headers = getAuthHeaders();
+
+  const res = await fetch(`${API_URL}/api/contatos/${id}/`, {
+    method: "GET",
+    headers,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    throw new Error(extractErrorMessage(data, "Erro ao buscar contato."));
+  }
+
+  return data;
+}
+
+// POST /api/contatos/
+export async function createContact(payload) {
+  const isMultipart = payload instanceof FormData;
+  const headers = getAuthHeaders(isMultipart);
+  const body = isMultipart ? payload : JSON.stringify(payload);
 
   const res = await fetch(`${API_URL}/api/contatos/`, {
     method: "POST",
-    headers: {
-      ...baseHeaders,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      nome,
-      telefone,
-      is_emergencia,
-      // foto fica de fora por enquanto
-    }),
+    headers,
+    body,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const errorMessage = extractErrorMessage(data, "Erro ao criar contato.");
+    throw new Error(errorMessage);
+  }
+
+  return data;
+}
+
+// PATCH /api/contatos/:id/
+export async function updateContact(id, payload) {
+  const isMultipart = payload instanceof FormData;
+  const headers = getAuthHeaders(isMultipart);
+  const body = isMultipart ? payload : JSON.stringify(payload);
+
+  const res = await fetch(`${API_URL}/api/contatos/${id}/`, {
+    method: "PATCH",
+    headers,
+    body,
   });
 
   const data = await res.json().catch(() => null);
@@ -79,10 +119,28 @@ export async function createContact({ nome, telefone, is_emergencia = false }) {
   if (!res.ok) {
     const errorMessage = extractErrorMessage(
       data,
-      "Erro ao criar contato."
+      "Erro ao atualizar contato."
     );
     throw new Error(errorMessage);
   }
 
   return data;
+}
+
+// DELETE /api/contatos/:id/
+export async function deleteContact(id) {
+  const headers = getAuthHeaders();
+
+  const res = await fetch(`${API_URL}/api/contatos/${id}/`, {
+    method: "DELETE",
+    headers,
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    const errorMessage = extractErrorMessage(data, "Erro ao excluir contato.");
+    throw new Error(errorMessage);
+  }
+
+  return true;
 }
