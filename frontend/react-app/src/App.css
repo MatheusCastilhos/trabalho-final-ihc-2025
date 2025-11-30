@@ -1,24 +1,25 @@
-/* Estilo geral */
+/* Wrapper da aplicação inteira */
 .app {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  margin: 0;
-  padding: 0;
-  background: linear-gradient(to bottom, #f5f5dc, #ffffff);
-  color: #333;
   min-height: 100vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: center; /* centraliza horizontalmente o conteúdo (.container) */
 }
 
+/* Container de conteúdo (todas as telas) */
 .container {
-  max-width: 400px;
+  max-width: 420px;
   width: 100%;
-  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
   box-sizing: border-box;
+  margin: 0 auto;
+
+  /* mesma cor do fundo global, pra tudo ficar uniforme */
+  background: #faf7e6;
 }
 
-/* Grid para cartões */
+/* Grid para cartões (dashboard) */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -57,7 +58,7 @@
   font-size: 1.2em;
 }
 
-/* Rodapé */
+/* Rodapé antigo (se ainda usar) */
 .footer {
   text-align: center;
 }
@@ -86,7 +87,7 @@
   color: #666;
 }
 
-/* Header */
+/* Header genérico (qualquer <header>) */
 header {
   display: flex;
   align-items: center;
@@ -123,7 +124,7 @@ header h1 {
 /* Responsividade */
 @media (max-width: 480px) {
   .container {
-    padding: 10px;
+    padding: 16px;
   }
   .grid {
     gap: 15px;

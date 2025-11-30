@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
+/* Base essencial */
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* Fundo estático, cor única, sem flex, sem centralização */
 body {
   font-family: var(--font-sans);
-  background: linear-gradient(to bottom, #f5f5dc, #ffffff);
+  background: #faf7e6;
   margin: 0;
   padding: 0;
   color: #333;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  overflow-y: scroll;
+  overflow-x: hidden;
 }
 
-.container {
+
+
+/* #root só ocupa a tela inteira.
+   Quem vai mandar no layout daqui pra frente é o App.css + os componentes. */
+#root {
   width: 100%;
-  max-width: 24rem;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 10px;
-  }
+  height: 100%;
 }

@@ -1,34 +1,46 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 
-function Home() {
+export default function Home() {
+  const navigate = useNavigate();
+
   return (
-    <div className="container">
-      <div className="grid grid-cols-2 gap-5 mb-10">
-        <Link to="/lembretes" className="bg-white rounded-3xl p-5 text-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-          <i className="fas fa-bell text-4xl text-primary mb-2.5"></i>
-          <h2 className="text-xl">Lembretes</h2>
-        </Link>
-        <Link to="/diario" className="bg-white rounded-3xl p-5 text-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-          <i className="fas fa-book-open text-4xl text-primary mb-2.5"></i>
-          <h2 className="text-xl">Meu Diário</h2>
-        </Link>
-        <Link to="/assistente" className="bg-white rounded-3xl p-5 text-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-          <i className="fas fa-user-circle text-4xl text-primary mb-2.5"></i>
-          <h2 className="text-xl">Assistente</h2>
-        </Link>
-        <Link to="/contatos" className="bg-white rounded-3xl p-5 text-center shadow-lg hover:scale-105 transition-transform cursor-pointer">
-          <i className="fas fa-phone text-4xl text-emergency mb-2.5"></i>
-          <h2 className="text-xl">Contatos</h2>
-        </Link>
-      </div>
-      <div className="text-center">
-        <button className="bg-primary border-none rounded-full w-20 h-20 flex justify-center items-center cursor-pointer mb-2.5 shadow-lg">
-          <i className="fas fa-microphone text-white text-xl"></i>
+    <div className="container flex flex-col justify-center items-center">
+      {/* Bloco central que realmente aparece no meio da tela */}
+      <div className="w-full max-w-xs text-center">
+
+        <h1 className="text-4xl font-semibold text-gray-900 mb-12">
+          Guardião da Memória
+        </h1>
+
+        <button
+          onClick={() => navigate("/login")}
+          className="
+            w-full py-4 mb-4
+            rounded-xl 
+            bg-[#3A5FCD] 
+            text-white text-lg font-semibold
+            shadow-md
+          "
+        >
+          Entrar
         </button>
-        <p className="text-gray-600">Pressione para falar</p>
+
+        <button
+          onClick={() => navigate("/register")}
+          className="
+            w-full py-4
+            rounded-xl 
+            bg-white 
+            text-[#3A5FCD] 
+            border border-[#3A5FCD] 
+            text-lg font-semibold
+            shadow-sm
+          "
+        >
+          Criar conta
+        </button>
+
       </div>
     </div>
   );
 }
-
-export default Home;
