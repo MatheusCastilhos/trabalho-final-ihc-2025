@@ -1,4 +1,4 @@
-# Guardião da Memória — Backend (API)
+# Guardião da Memória
 
 Este repositório contém o **backend completo** da solução assistiva *Guardião da Memória*, desenvolvida para a disciplina de **Interação Humano-Computador (IHC)**.
 A aplicação combina:
