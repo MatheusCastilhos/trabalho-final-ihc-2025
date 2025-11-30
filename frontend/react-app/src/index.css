@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+body {
+  font-family: var(--font-sans);
+  background: linear-gradient(to bottom, #f5f5dc, #ffffff);
+  margin: 0;
+  padding: 0;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 24rem;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 10px;
+  }
+}
