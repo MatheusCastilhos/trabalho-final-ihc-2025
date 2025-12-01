@@ -15,9 +15,13 @@ function Assistente() {
   const [isSending, setIsSending] = useState(false);
   const [chatError, setChatError] = useState("");
 
+  // Leitura em voz alta (TTS)
+  const [ttsEnabled, setTtsEnabled] = useState(false);
+  const lastSpokenIdRef = useRef(null);
+
   const messagesEndRef = useRef(null);
 
-  // Hook de Voz (Nossa nova implementação)
+  // Hook de Voz (reconhecimento de fala)
   const {
     isListening,
     transcript: voiceText,
@@ -27,16 +31,14 @@ function Assistente() {
     setTranscript,
   } = useSpeechRecognition();
 
-  // Efeito para atualizar o input quando a voz for reconhecida
+  // Atualiza o input quando a voz for reconhecida
   useEffect(() => {
     if (voiceText) {
       setMessage((prev) => (prev ? prev + " " + voiceText : voiceText));
-      // Opcional: Limpar o transcript do hook para não duplicar se falar de novo
-      // mas o hook já limpa no startListening.
     }
   }, [voiceText]);
 
-  // Carregar Histórico
+  // Carregar histórico do backend
   useEffect(() => {
     async function loadHistory() {
       try {
@@ -61,21 +63,39 @@ function Assistente() {
     loadHistory();
   }, []);
 
-  // Scroll automático
+  // Scroll automático pro fim da conversa
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
-  // Falar (TTS)
-  const speakResponse = (text) => {
-    if (!window.speechSynthesis) return;
+  // Função auxiliar para falar texto
+  const speakText = (text) => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "pt-BR";
     window.speechSynthesis.speak(utterance);
   };
+
+  // Efeito: ler automaticamente a MENSAGEM MAIS RECENTE do bot
+  useEffect(() => {
+    if (!ttsEnabled) return;
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (!messages || messages.length === 0) return;
+
+    const lastBotMessage = [...messages].reverse().find(
+      (m) => m.sender === "bot"
+    );
+    if (!lastBotMessage) return;
+
+    // Se já foi lida, não repete
+    if (lastSpokenIdRef.current === lastBotMessage.id) return;
+
+    lastSpokenIdRef.current = lastBotMessage.id;
+    speakText(lastBotMessage.text);
+  }, [messages, ttsEnabled]);
 
   const handleStartChat = () => {
     setChatStarted(true);
@@ -87,11 +107,10 @@ function Assistente() {
     const text = message.trim();
     if (!text) return;
 
-    // Adiciona msg do usuário
     const tempId = Date.now();
     setMessages((prev) => [...prev, { id: tempId, sender: "user", text }]);
     setMessage("");
-    setTranscript(""); // Limpa o buffer de voz se houver
+    setTranscript("");
 
     try {
       setIsSending(true);
@@ -101,7 +120,7 @@ function Assistente() {
         ...prev,
         { id: Date.now() + 1, sender: "bot", text: resposta },
       ]);
-      speakResponse(resposta);
+      // Leitura automática fica a cargo do useEffect
     } catch (err) {
       setChatError("Erro ao obter resposta. Tente novamente.");
     } finally {
@@ -110,8 +129,38 @@ function Assistente() {
   };
 
   const handleBack = () => {
-    window.speechSynthesis.cancel();
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setTtsEnabled(false);
     navigate("/dashboard");
+  };
+
+  const toggleTts = () => {
+    // Se desativar, só cancela qualquer fala
+    if (ttsEnabled) {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      setTtsEnabled(false);
+      return;
+    }
+
+    // Se ativar:
+    setTtsEnabled(true);
+
+    // 1) pega a última mensagem do bot
+    if (!messages || messages.length === 0) return;
+    const lastBotMessage = [...messages].reverse().find(
+      (m) => m.sender === "bot"
+    );
+    if (!lastBotMessage) return;
+
+    // 2) marca como "já falada" pra não duplicar via useEffect
+    lastSpokenIdRef.current = lastBotMessage.id;
+
+    // 3) lê imediatamente
+    speakText(lastBotMessage.text);
   };
 
   // Combina erros de chat e voz para exibir
@@ -226,6 +275,31 @@ function Assistente() {
                     ></i>
                   </button>
                 )}
+
+                {/* Botão de TTS (leitura em voz alta) */}
+                <button
+                  type="button"
+                  onClick={toggleTts}
+                  className={`
+                    w-12 h-12 rounded-full flex items-center justify-center shadow-md border transition-colors
+                    ${
+                      ttsEnabled
+                        ? "bg-[#3A5FCD] text-white border-[#3A5FCD]"
+                        : "bg-white text-primary border-gray-200 hover:bg-gray-50"
+                    }
+                  `}
+                  title={
+                    ttsEnabled
+                      ? "Desativar leitura em voz alta"
+                      : "Ativar leitura em voz alta"
+                  }
+                >
+                  <i
+                    className={`fas ${
+                      ttsEnabled ? "fa-volume-up" : "fa-volume-mute"
+                    }`}
+                  ></i>
+                </button>
 
                 <input
                   type="text"
