@@ -1,9 +1,10 @@
+# backend/apps/chat/views.py
+from django.utils import timezone
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-
-from django.utils import timezone
 
 from drf_spectacular.utils import extend_schema
 
@@ -116,7 +117,10 @@ class ChatAPIView(APIView):
         # 1. Validar o JSON de entrada
         serializer = ChatInputSerializer(data=request.data)
         if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         user = request.user
         user_input = serializer.validated_data["message"]

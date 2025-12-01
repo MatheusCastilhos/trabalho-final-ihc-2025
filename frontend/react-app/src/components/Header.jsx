@@ -1,29 +1,34 @@
+// src/components/Header.jsx
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { logoutUser } from "../api/auth";
 
 export default function Header() {
   const navigate = useNavigate();
-  const [username, setUsername] = useState("Usuário");
+  const [displayName, setDisplayName] = useState("Usuário");
 
   useEffect(() => {
-    const storedName = localStorage.getItem("username");
-    if (storedName) setUsername(storedName);
+    const storedDisplayName = localStorage.getItem("displayName");
+    const storedUsername = localStorage.getItem("username");
+
+    if (storedDisplayName && storedDisplayName.trim()) {
+      setDisplayName(storedDisplayName);
+    } else if (storedUsername && storedUsername.trim()) {
+      setDisplayName(storedUsername);
+    }
   }, []);
 
   const handleLogout = async () => {
     try {
-      // tenta invalidar o token no backend
       await logoutUser();
     } catch (e) {
-      console.error("Erro ao deslogar no backend:", e);
+      console.error(e);
+    } finally {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("username");
+      localStorage.removeItem("displayName");
+      navigate("/login");
     }
-
-    // limpa tudo no front
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("username");
-
-    navigate("/login");
   };
 
   return (
@@ -39,9 +44,7 @@ export default function Header() {
     >
       <div className="leading-tight">
         <p className="text-base text-gray-700">Bem-vindo,</p>
-        <p className="text-2xl font-semibold text-gray-900">
-          {username}
-        </p>
+        <p className="text-2xl font-semibold text-gray-900">{displayName}</p>
       </div>
 
       <button

@@ -10,24 +10,25 @@ from django.contrib.auth import authenticate
 import unicodedata
 
 from .serializers import UserSerializer
+from .models import PerfilPaciente
 
 
 def normalize_username(raw: str) -> str:
-  """
-  Converte username para:
-  - sem espaços nas pontas
-  - minúsculo
-  - sem acentos
-  """
-  if not raw:
-      return ""
-  normalized = unicodedata.normalize("NFD", raw.strip().lower())
-  # remove caracteres de acento (combining marks)
-  normalized = "".join(
-      ch for ch in normalized
-      if unicodedata.category(ch) != "Mn"
-  )
-  return normalized
+    """
+    Converte username para:
+    - sem espaços nas pontas
+    - minúsculo
+    - sem acentos
+    """
+    if not raw:
+        return ""
+    normalized = unicodedata.normalize("NFD", raw.strip().lower())
+    # remove caracteres de acento (combining marks)
+    normalized = "".join(
+        ch for ch in normalized
+        if unicodedata.category(ch) != "Mn"
+    )
+    return normalized
 
 
 @extend_schema(
@@ -37,41 +38,55 @@ def normalize_username(raw: str) -> str:
         400: OpenApiTypes.OBJECT,
     },
     description=(
-        "Registra um novo usuário.\n\n"
+        "Registra um novo usuário/paciente.\n\n"
         "Campos esperados no corpo da requisição:\n"
         "- username (string)\n"
         "- email (string)\n"
-        "- password (string)\n\n"
-        "Retorna um token de autenticação e informações básicas do usuário."
+        "- password (string)\n"
+        "- nome_completo (string)\n"
+        "- data_nascimento (string, formato YYYY-MM-DD)\n\n"
+        "O username é normalizado (minúsculo e sem acentos) antes de ser salvo.\n\n"
+        "Retorna um token de autenticação e informações básicas do usuário/paciente."
     ),
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
     """
-    View para registrar um novo usuário.
-    Recebe 'username', 'email', 'password' via POST.
+    View para registrar um novo usuário/paciente.
+    Recebe 'username', 'email', 'password', 'nome_completo', 'data_nascimento' via POST.
     """
     data = request.data.copy()
+
+    # Normaliza username antes de passar para o serializer
     if "username" in data:
         data["username"] = normalize_username(data["username"])
 
     serializer = UserSerializer(data=data)
 
     if serializer.is_valid():
-        # Salva o novo usuário no banco
+        # Salva o novo usuário (e o PerfilPaciente dentro do serializer)
         user = serializer.save()
 
         # Cria um token para o novo usuário
         token = Token.objects.create(user=user)
 
-        # Retorna o token e uma msg de sucesso
-        data = {
-            'token': token.key,
-            'user_id': user.pk,
-            'email': user.email,
+        # Tenta recuperar o perfil do paciente
+        perfil = getattr(user, "perfil_paciente", None)
+
+        # Monta resposta
+        resp_data = {
+            "token": token.key,
+            "user_id": user.pk,
+            "username": user.username,
+            "email": user.email,
         }
-        return Response(data, status=status.HTTP_201_CREATED)
+
+        if perfil:
+            resp_data["nome_completo"] = perfil.nome_completo
+            resp_data["data_nascimento"] = str(perfil.data_nascimento)
+
+        return Response(resp_data, status=status.HTTP_201_CREATED)
 
     # Se os dados não forem válidos (ex: usuário já existe)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -88,7 +103,9 @@ def register_view(request):
         "Campos esperados no corpo da requisição:\n"
         "- username (string)\n"
         "- password (string)\n\n"
-        "Retorna um token de autenticação."
+        "O username é normalizado (minúsculo e sem acentos) antes de autenticar.\n\n"
+        "Retorna um token de autenticação e dados básicos do usuário, "
+        "incluindo nome completo e data de nascimento, se o PerfilPaciente existir."
     ),
 )
 @api_view(['POST'])
@@ -119,12 +136,19 @@ def login_view(request):
 
     token, _ = Token.objects.get_or_create(user=user)
 
+    perfil = getattr(user, "perfil_paciente", None)
+
     data = {
         "token": token.key,
         "user_id": user.pk,
-        "email": user.email,
         "username": user.username,
+        "email": user.email,
     }
+
+    if perfil:
+        data["nome_completo"] = perfil.nome_completo
+        data["data_nascimento"] = str(perfil.data_nascimento)
+
     return Response(data, status=status.HTTP_200_OK)
 
 

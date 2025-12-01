@@ -1,21 +1,18 @@
-const API_URL = "http://127.0.0.1:8000"; // depois, se quiser, joga isso num .env
+// src/api/auth.js
+const API_URL = "http://127.0.0.1:8000"; // se mudar porta, ajusta aqui
 
 function extractErrorMessage(data, fallback) {
   if (!data) return fallback;
 
-  // DRF às vezes manda { detail: "..." }
+  // DRF às vezes manda {detail: "..."}
   if (typeof data.detail === "string") return data.detail;
 
-  // Às vezes manda { username: ["já existe"], email: ["inválido"], ... }
+  // Às vezes manda {username: ["já existe"], email: ["inválido"]...}
   if (typeof data === "object") {
-    const keys = Object.keys(data);
-    if (keys.length > 0) {
-      const firstKey = keys[0];
-      const value = data[firstKey];
-
-      if (Array.isArray(value) && value.length > 0) return value[0];
-      if (typeof value === "string") return value;
-    }
+    const firstKey = Object.keys(data)[0];
+    const value = data[firstKey];
+    if (Array.isArray(value)) return value[0];
+    if (typeof value === "string") return value;
   }
 
   // Último recurso
@@ -24,14 +21,28 @@ function extractErrorMessage(data, fallback) {
   return fallback;
 }
 
-export async function registerUser({ username, email, password }) {
+// REGISTRO
+export async function registerUser({
+  username,
+  email,
+  password,
+  fullName,
+  birthDate,
+}) {
   const res = await fetch(`${API_URL}/api/auth/register/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
     },
-    body: JSON.stringify({ username, email, password }),
+    body: JSON.stringify({
+      username,
+      email,
+      password,
+      // campos extras esperados pelo backend
+      nome_completo: fullName,
+      data_nascimento: birthDate, // "YYYY-MM-DD"
+    }),
   });
 
   const data = await res.json().catch(() => null);
@@ -41,10 +52,10 @@ export async function registerUser({ username, email, password }) {
     throw new Error(errorMessage);
   }
 
-  // deve conter token, user_id, email, etc.
-  return data;
+  return data; // pode conter token, etc.
 }
 
+// LOGIN
 export async function loginUser({ username, password }) {
   const res = await fetch(`${API_URL}/api/auth/login/`, {
     method: "POST",
@@ -56,6 +67,7 @@ export async function loginUser({ username, password }) {
   });
 
   const data = await res.json().catch(() => null);
+  console.log("LOGIN RESPONSE:", data);
 
   if (!res.ok) {
     const errorMessage = extractErrorMessage(
@@ -65,27 +77,27 @@ export async function loginUser({ username, password }) {
     throw new Error(errorMessage);
   }
 
-  // deve conter token e possivelmente dados do usuário
-  return data;
+  return data; // { token, user_id, email, username, ... }
 }
 
+// LOGOUT
 export async function logoutUser() {
   const token = localStorage.getItem("authToken");
   if (!token) {
-    // já está "deslogado" do ponto de vista do front
     return;
   }
 
-  try {
-    await fetch(`${API_URL}/api/auth/logout/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${token}`,
-        Accept: "application/json",
-      },
-    });
-  } catch (e) {
-    // se der erro no fetch, a gente só loga no console
-    console.error("Erro ao chamar logout:", e);
+  const res = await fetch(`${API_URL}/api/auth/logout/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Token ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    console.error("Erro ao fazer logout no backend:", data);
   }
 }
